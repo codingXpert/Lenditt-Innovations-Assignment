@@ -1,4 +1,5 @@
 const db = require("../config/dbConnection");
+const bcrypt = require("bcrypt");
 
 // API to sync user
 const syncContact = async (req, res) => {
@@ -10,10 +11,11 @@ const syncContact = async (req, res) => {
 
         for (const contact of contacts) {
             const { name, number } = contact;
-
+            const stringifiedNumber = String(number);
+            const encryptedNumber = await bcrypt.hash(stringifiedNumber, 10);
             await db.query(
                 'INSERT INTO contacts (userId, name, number) VALUES (?, ?, ?)',
-                [id, name, number]
+                [id, name, encryptedNumber]
             );
             console.log("Inserted contact:", name, number);
         }
@@ -31,20 +33,19 @@ const findCommonUser = async (req, res) => {
     try {
         const { searchNumber } = req.query;
   const query = 'SELECT userId, name FROM contacts WHERE number = ?';
-
-  db.query(query, searchNumber, (err, results) => {
+  const encryptedNumber = await bcrypt.compare(searchNumber, `contacts.password`);
+  db.query(query, encryptedNumber, (err, results) => {
     if (err) {
       res.status(500).json({ success: false, message: 'Error fetching data' });
       throw err;
     }
-
     if (results.length === 0) {
       res.json({ Name: 'Not found', commonUsers: [] });
     } else {
       const name = results[0].name;
       const commonUsers = results.map(result => result.userId);
 
-      const uniqueCommonUsers = [...new Set(commonUsers)]; // Removing duplicates
+      const uniqueCommonUsers = [...new Set(commonUsers)];
 
       res.json({ Name: name, commonUsers: uniqueCommonUsers });
     }
@@ -82,7 +83,6 @@ const getContactById = async(req, res) => {
       selectQuery += ' AND name LIKE ?';
       selectValues.push(`%${searchText}%`);
     }
-
     selectQuery += ' LIMIT ? OFFSET ?';
     selectValues.push(PageSize, offset);
 
@@ -91,7 +91,6 @@ const getContactById = async(req, res) => {
         res.status(500).json({ success: false, message: 'Error fetching contacts' });
         throw err;
       }
-
       res.json({ totalCount, rows });
     });
   });
