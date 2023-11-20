@@ -10,6 +10,7 @@ function createContactTable() {
             (
               id INT AUTO_INCREMENT PRIMARY KEY,
               userId INT,
+              name VARCHAR(30), NOT NULL
               number VARCHAR(255) NOT NULL, 
               FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
             )`;  
